@@ -3,14 +3,14 @@ FROM node:20-alpine AS base
 # ── Install dependencies ──────────────────────────────────────────────
 FROM base AS deps
 WORKDIR /app
-COPY package.json ./
+COPY frontend/package.json ./
 RUN npm install --frozen-lockfile
 
 # ── Build ─────────────────────────────────────────────────────────────
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+COPY frontend/ .
 
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
