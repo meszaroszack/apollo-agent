@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS accounts (
 
 CREATE TABLE IF NOT EXISTS journal_entries (
     id              BIGSERIAL PRIMARY KEY,
-    entry_id        UUID NOT NULL DEFAULT gen_random_uuid(),
+    entry_id        UUID NOT NULL UNIQUE DEFAULT gen_random_uuid(),
     created_at      TIMESTAMPTZ DEFAULT NOW(),
     description     TEXT,
     fill_id         TEXT,           -- Kalshi fill/order ID
@@ -124,6 +124,21 @@ class LedgerEngine:
         """Run schema migrations."""
         async with self._pool.acquire() as conn:
             await conn.execute(SCHEMA_SQL)
+            # Idempotent migration: add UNIQUE constraint on entry_id if missing
+            # (needed for journal_lines FK reference to work)
+            await conn.execute("""
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1 FROM pg_constraint
+                        WHERE conrelid = 'journal_entries'::regclass
+                          AND contype = 'u'
+                          AND conname = 'journal_entries_entry_id_key'
+                    ) THEN
+                        ALTER TABLE journal_entries ADD CONSTRAINT journal_entries_entry_id_key UNIQUE (entry_id);
+                    END IF;
+                END$$;
+            """)
 
     async def record_fill(
         self,
