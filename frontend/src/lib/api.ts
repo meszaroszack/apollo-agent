@@ -1,5 +1,10 @@
 const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+// Exported so dashboard can detect session expiry
+export class SessionExpiredError extends Error {
+  constructor() { super("Session not found"); }
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     headers: { "Content-Type": "application/json", ...(options?.headers || {}) },
@@ -7,7 +12,12 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || "API error");
+    const msg = err.detail || "API error";
+    // 404 on session endpoints = backend restarted, session is gone
+    if (res.status === 404 && msg === "Session not found") {
+      throw new SessionExpiredError();
+    }
+    throw new Error(msg);
   }
   return res.json();
 }

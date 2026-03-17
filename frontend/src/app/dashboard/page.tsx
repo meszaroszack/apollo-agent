@@ -7,7 +7,7 @@ import { useApolloStore } from "@/lib/store";
 import {
   getSession, getPortfolio, getLedgerBalance,
   getReconciliation, getDecisions, analyzeMatchup, executeTrade,
-  getMarkets, AnalyzePayload
+  getMarkets, AnalyzePayload, SessionExpiredError
 } from "@/lib/api";
 import PnLChart from "@/components/charts/PnLChart";
 import DivergenceChart from "@/components/charts/DivergenceChart";
@@ -16,7 +16,7 @@ import DecisionLog from "@/components/dashboard/DecisionLog";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { sessionId, sessionConfig } = useApolloStore();
+  const { sessionId, sessionConfig, clearSession } = useApolloStore();
 
   const [session, setSession] = useState<any>(null);
   const [portfolio, setPortfolio] = useState<any>(null);
@@ -59,8 +59,13 @@ export default function DashboardPage() {
       if (s.status === "fulfilled" && s.value.halted) {
         toast.error(`TRADING HALTED: ${s.value.halt_reason}`);
       }
-    } catch {
-      // silently absorb — polling will retry
+    } catch (err) {
+      if (err instanceof SessionExpiredError) {
+        clearSession();
+        toast.error("Session expired — backend restarted. Re-enter your credentials.");
+        router.replace("/onboarding");
+      }
+      // other errors: silently absorb — polling will retry
     }
   };
 
