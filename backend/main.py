@@ -89,21 +89,21 @@ class SessionCreate(BaseModel):
 class AnalyzeRequest(BaseModel):
     session_id: str
     market_ticker: str
-    team_a_id: int
-    team_a_name: str
-    team_b_id: int
-    team_b_name: str
-    p_market_a: float = Field(..., ge=0.0, le=1.0)
+    team_a_id: int = 0
+    team_a_name: str = "Team A"
+    team_b_id: int = 0
+    team_b_name: str = "Team B"
+    p_market_a: float = Field(0.5, ge=0.0, le=1.0)
 
 
 class TradeRequest(BaseModel):
     session_id: str
     market_ticker: str
-    team_a_id: int
-    team_a_name: str
-    team_b_id: int
-    team_b_name: str
-    p_market_a: float = Field(..., ge=0.0, le=1.0)
+    team_a_id: int = 0
+    team_a_name: str = "Team A"
+    team_b_id: int = 0
+    team_b_name: str = "Team B"
+    p_market_a: float = Field(0.5, ge=0.0, le=1.0)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -253,22 +253,35 @@ async def get_all_orderbooks(session_id: str):
 @app.post("/api/analyze")
 async def analyze_matchup(req: AnalyzeRequest):
     ctx = _get_session(req.session_id)
-    signal = await ctx["alpha"].analyze_matchup(
-        req.team_a_id, req.team_a_name,
-        req.team_b_id, req.team_b_name,
-        req.p_market_a,
-    )
+    try:
+        signal = await ctx["alpha"].analyze_matchup(
+            req.team_a_id, req.team_a_name,
+            req.team_b_id, req.team_b_name,
+            req.p_market_a,
+        )
+    except Exception as exc:
+        log.error("Alpha engine failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Alpha engine error: {exc}")
+
     side = "NO" if signal.signal in ("NO_A", "NO_B") else "YES"
     trade_on_a = signal.signal in ("NO_A", "YES_A")
     p_true = signal.p_true_a if trade_on_a else signal.p_true_b
     p_market = req.p_market_a if trade_on_a else (1.0 - req.p_market_a)
-    sizing = ctx["sizer"].size(p_true, p_market, side=side)
+
+    try:
+        sizing = ctx["sizer"].size(p_true, p_market, side=side)
+    except Exception as exc:
+        log.error("Kelly sizer failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Kelly sizing error: {exc}")
 
     sentiment = None
     if ctx["sentiment"].is_enabled and signal.signal != "NEUTRAL":
-        primary = req.team_a_name if trade_on_a else req.team_b_name
-        s = await ctx["sentiment"].evaluate(req.team_a_name, req.team_b_name, primary)
-        sentiment = {"score": s.score, "should_abort": s.should_abort, "reason": s.reason, "summary": s.summary}
+        try:
+            primary = req.team_a_name if trade_on_a else req.team_b_name
+            s = await ctx["sentiment"].evaluate(req.team_a_name, req.team_b_name, primary)
+            sentiment = {"score": s.score, "should_abort": s.should_abort, "reason": s.reason, "summary": s.summary}
+        except Exception as exc:
+            log.warning("Sentiment evaluation failed (non-fatal): %s", exc)
 
     return {
         "signal": signal.signal,

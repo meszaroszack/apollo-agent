@@ -83,11 +83,11 @@ export default function DashboardPage() {
       const payload: AnalyzePayload = {
         session_id: sessionId,
         market_ticker: form.market_ticker,
-        team_a_id: parseInt(form.team_a_id),
-        team_a_name: form.team_a_name,
-        team_b_id: parseInt(form.team_b_id),
-        team_b_name: form.team_b_name,
-        p_market_a: parseFloat(form.p_market_a),
+        team_a_id: parseInt(form.team_a_id) || 0,
+        team_a_name: form.team_a_name || "Team A",
+        team_b_id: parseInt(form.team_b_id) || 0,
+        team_b_name: form.team_b_name || "Team B",
+        p_market_a: parseFloat(form.p_market_a) || 0.5,
       };
       const result = await analyzeMatchup(payload);
       setLastAnalysis(result);
@@ -106,11 +106,11 @@ export default function DashboardPage() {
       const payload: AnalyzePayload = {
         session_id: sessionId,
         market_ticker: form.market_ticker,
-        team_a_id: parseInt(form.team_a_id),
-        team_a_name: form.team_a_name,
-        team_b_id: parseInt(form.team_b_id),
-        team_b_name: form.team_b_name,
-        p_market_a: parseFloat(form.p_market_a),
+        team_a_id: parseInt(form.team_a_id) || 0,
+        team_a_name: form.team_a_name || "Team A",
+        team_b_id: parseInt(form.team_b_id) || 0,
+        team_b_name: form.team_b_name || "Team B",
+        p_market_a: parseFloat(form.p_market_a) || 0.5,
       };
       const result = await executeTrade(payload);
       if (result.executed) {
@@ -216,9 +216,11 @@ export default function DashboardPage() {
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
               <div>
-                <label className="text-xs" style={{ color: "var(--text-secondary)" }}>MARKET TICKER</label>
+                <label htmlFor="market_ticker" className="text-xs" style={{ color: "var(--text-secondary)" }}>MARKET TICKER</label>
                 {markets.length > 0 ? (
                   <select
+                    id="market_ticker"
+                    name="market_ticker"
                     style={{ ...inputStyle, cursor: "pointer" }}
                     value={form.market_ticker}
                     onChange={e => {
@@ -235,32 +237,33 @@ export default function DashboardPage() {
                     {markets.map((m: any) => (
                       <option key={m.ticker} value={m.ticker}>
                         {m.title || m.subtitle || m.yes_sub_title || m.event_ticker || m.ticker}
+                        {m.yes_bid != null ? ` (${m.yes_bid}¢)` : ""}
                       </option>
                     ))}
                   </select>
                 ) : (
-                  <input style={inputStyle} placeholder="kxncaambgame-26mar17..." value={form.market_ticker} onChange={e => setForm(f => ({ ...f, market_ticker: e.target.value }))} />
+                  <input id="market_ticker" name="market_ticker" style={inputStyle} placeholder="kxncaambgame-26mar17..." value={form.market_ticker} onChange={e => setForm(f => ({ ...f, market_ticker: e.target.value }))} />
                 )}
               </div>
               <div>
-                <label className="text-xs" style={{ color: "var(--text-secondary)" }}>P_MARKET (YES team A)</label>
-                <input style={inputStyle} type="number" step="0.01" min="0.01" max="0.99" value={form.p_market_a} onChange={e => setForm(f => ({ ...f, p_market_a: e.target.value }))} />
+                <label htmlFor="p_market_a" className="text-xs" style={{ color: "var(--text-secondary)" }}>P_MARKET (YES team A)</label>
+                <input id="p_market_a" name="p_market_a" style={inputStyle} type="number" step="0.01" min="0.01" max="0.99" value={form.p_market_a} onChange={e => setForm(f => ({ ...f, p_market_a: e.target.value }))} />
               </div>
               <div>
-                <label className="text-xs" style={{ color: "var(--text-secondary)" }}>TEAM A NAME</label>
-                <input style={inputStyle} placeholder="Duke" value={form.team_a_name} onChange={e => setForm(f => ({ ...f, team_a_name: e.target.value }))} />
+                <label htmlFor="team_a_name" className="text-xs" style={{ color: "var(--text-secondary)" }}>TEAM A NAME</label>
+                <input id="team_a_name" name="team_a_name" style={inputStyle} placeholder="Duke" value={form.team_a_name} onChange={e => setForm(f => ({ ...f, team_a_name: e.target.value }))} />
               </div>
               <div>
-                <label className="text-xs" style={{ color: "var(--text-secondary)" }}>TEAM A BDL ID</label>
-                <input style={inputStyle} type="number" placeholder="1" value={form.team_a_id} onChange={e => setForm(f => ({ ...f, team_a_id: e.target.value }))} />
+                <label htmlFor="team_a_id" className="text-xs" style={{ color: "var(--text-secondary)" }}>TEAM A BDL ID</label>
+                <input id="team_a_id" name="team_a_id" style={inputStyle} type="number" placeholder="1" value={form.team_a_id} onChange={e => setForm(f => ({ ...f, team_a_id: e.target.value }))} />
               </div>
               <div>
-                <label className="text-xs" style={{ color: "var(--text-secondary)" }}>TEAM B NAME</label>
-                <input style={inputStyle} placeholder="UNC" value={form.team_b_name} onChange={e => setForm(f => ({ ...f, team_b_name: e.target.value }))} />
+                <label htmlFor="team_b_name" className="text-xs" style={{ color: "var(--text-secondary)" }}>TEAM B NAME</label>
+                <input id="team_b_name" name="team_b_name" style={inputStyle} placeholder="UNC" value={form.team_b_name} onChange={e => setForm(f => ({ ...f, team_b_name: e.target.value }))} />
               </div>
               <div>
-                <label className="text-xs" style={{ color: "var(--text-secondary)" }}>TEAM B BDL ID</label>
-                <input style={inputStyle} type="number" placeholder="2" value={form.team_b_id} onChange={e => setForm(f => ({ ...f, team_b_id: e.target.value }))} />
+                <label htmlFor="team_b_id" className="text-xs" style={{ color: "var(--text-secondary)" }}>TEAM B BDL ID</label>
+                <input id="team_b_id" name="team_b_id" style={inputStyle} type="number" placeholder="2" value={form.team_b_id} onChange={e => setForm(f => ({ ...f, team_b_id: e.target.value }))} />
               </div>
             </div>
 
