@@ -3,14 +3,14 @@ FROM node:20-alpine AS base
 # ── Install dependencies ──────────────────────────────────────────────
 FROM base AS deps
 WORKDIR /app
-COPY frontend/package.json ./
+COPY package.json ./
 RUN npm install
 
 # ── Build ─────────────────────────────────────────────────────────────
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
-COPY frontend/ .
+COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
