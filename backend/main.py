@@ -1,23 +1,8 @@
 """
 Apollo-Agent FastAPI Server
----------------------------
-Endpoints:
-  POST /api/session          — Create a session with user credentials (keys stored in memory only)
-  GET  /api/session/{sid}    — Get session status
-  GET  /api/markets          — List open NCAAB Kalshi markets
-  GET  /api/orderbook/{ticker} — Current local orderbook snapshot
-  POST /api/analyze          — Run alpha analysis on a matchup
-  POST /api/trade            — Execute a trade
-  GET  /api/portfolio        — Portfolio & P&L
-  GET  /api/ledger/balance   — Internal ledger balance
-  GET  /api/reconciliation   — Last reconciliation status
-  GET  /api/decisions        — Recent trade decisions
-  GET  /api/health           — Health check
-  WS   /ws/{session_id}      — Push orderbook/fill updates to dashboard
 """
 
 import asyncio
-import json
 import logging
 import os
 import uuid
@@ -39,29 +24,38 @@ from apollo.signer import KalshiSigner
 from apollo.trade_engine import TradeEngine
 
 log = logging.getLogger("apollo.main")
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
 
-# ──────────────────────────────────────────────────────────────────────────────
-# In-memory session store (keys are NEVER persisted to disk or DB)
-# ──────────────────────────────────────────────────────────────────────────────
-_sessions: dict[str, dict] = {}    # session_id → session context
-
-
-# ──────────────────────────────────────────────────────────────────────────────
-# DB connection pool (module-level, shared)
-# ──────────────────────────────────────────────────────────────────────────────
+_sessions: dict[str, dict] = {}
 _pool: Optional[asyncpg.Pool] = None
+_db_ready: bool = False
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global _pool
-    db_url = os.environ.get("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/apollo")
-    _pool = await asyncpg.create_pool(db_url, min_size=2, max_size=10)
-    log.info("PostgreSQL pool created")
+    global _pool, _db_ready
+    db_url = os.environ.get("DATABASE_URL")
+    if not db_url:
+        log.warning(
+            "DATABASE_URL not set — running without database. "
+            "Session creation will fail until DATABASE_URL is configured."
+        )
+    else:
+        try:
+            _pool = await asyncpg.create_pool(db_url, min_size=2, max_size=10)
+            _db_ready = True
+            log.info("PostgreSQL pool created successfully")
+        except Exception as exc:
+            log.error("Failed to connect to PostgreSQL: %s", exc)
+            log.error("DATABASE_URL was: %s", db_url[:40] + "..." if len(db_url) > 40 else db_url)
+            # Don't crash — let the server start so /api/health responds
     yield
-    await _pool.close()
-    log.info("PostgreSQL pool closed")
+    if _pool:
+        await _pool.close()
+        log.info("PostgreSQL pool closed")
 
 
 app = FastAPI(
@@ -79,17 +73,15 @@ app.add_middleware(
 )
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Request / Response Models
-# ──────────────────────────────────────────────────────────────────────────────
+# ── Models ────────────────────────────────────────────────────────────────────
 
 class SessionCreate(BaseModel):
-    kalshi_key_id: str = Field(..., description="Kalshi Access Key ID (UUID)")
-    kalshi_private_key: str = Field(..., description="PEM-encoded RSA private key (.key contents)")
-    perplexity_api_key: Optional[str] = Field(None, description="Perplexity API key (optional)")
-    balldontlie_api_key: str = Field(..., description="BALLDONTLIE GOAT-tier API key")
-    bankroll_usd: float = Field(1000.0, ge=10.0, description="Starting bankroll in USD")
-    dry_run: bool = Field(True, description="If true, analyze but never submit orders")
+    kalshi_key_id: str
+    kalshi_private_key: str
+    perplexity_api_key: Optional[str] = None
+    balldontlie_api_key: str
+    bankroll_usd: float = Field(1000.0, ge=10.0)
+    dry_run: bool = True
 
 
 class AnalyzeRequest(BaseModel):
@@ -99,7 +91,7 @@ class AnalyzeRequest(BaseModel):
     team_a_name: str
     team_b_id: int
     team_b_name: str
-    p_market_a: float = Field(..., ge=0.0, le=1.0, description="Kalshi YES price for team A (0–1)")
+    p_market_a: float = Field(..., ge=0.0, le=1.0)
 
 
 class TradeRequest(BaseModel):
@@ -112,9 +104,7 @@ class TradeRequest(BaseModel):
     p_market_a: float = Field(..., ge=0.0, le=1.0)
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# Session management
-# ──────────────────────────────────────────────────────────────────────────────
+# ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _get_session(session_id: str) -> dict:
     if session_id not in _sessions:
@@ -123,7 +113,12 @@ def _get_session(session_id: str) -> dict:
 
 
 async def _build_session(req: SessionCreate, session_id: str) -> dict:
-    """Construct all service objects for a user session."""
+    if not _db_ready or _pool is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Database not connected. Check DATABASE_URL environment variable."
+        )
+
     signer = KalshiSigner(req.kalshi_key_id, req.kalshi_private_key)
     kalshi = KalshiClient(signer)
     bdl = BallDontLieClient(req.balldontlie_api_key)
@@ -143,8 +138,6 @@ async def _build_session(req: SessionCreate, session_id: str) -> dict:
     recon.start()
 
     engine = TradeEngine(alpha, sentiment, sizer, kalshi, ledger, recon, req.dry_run)
-
-    # Orderbook manager (starts empty, populated as markets are watched)
     ob_manager = OrderbookManager(signer, [], None)
     await ob_manager.start()
 
@@ -168,13 +161,15 @@ async def _build_session(req: SessionCreate, session_id: str) -> dict:
     }
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# REST Endpoints
-# ──────────────────────────────────────────────────────────────────────────────
+# ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "version": "1.0.0"}
+    return {
+        "status": "ok",
+        "version": "1.0.0",
+        "db_ready": _db_ready,
+    }
 
 
 @app.post("/api/session")
@@ -189,7 +184,10 @@ async def create_session(req: SessionCreate):
             "sentiment_enabled": ctx["sentiment"].is_enabled,
             "status": "active",
         }
+    except HTTPException:
+        raise
     except Exception as exc:
+        log.error("Session creation failed: %s", exc, exc_info=True)
         raise HTTPException(status_code=400, detail=str(exc))
 
 
@@ -240,14 +238,12 @@ async def analyze_matchup(req: AnalyzeRequest):
         req.team_b_id, req.team_b_name,
         req.p_market_a,
     )
-    # Also compute Kelly sizing
     side = "NO" if signal.signal in ("NO_A", "NO_B") else "YES"
     trade_on_a = signal.signal in ("NO_A", "YES_A")
     p_true = signal.p_true_a if trade_on_a else signal.p_true_b
     p_market = req.p_market_a if trade_on_a else (1.0 - req.p_market_a)
     sizing = ctx["sizer"].size(p_true, p_market, side=side)
 
-    # Sentiment (if enabled)
     sentiment = None
     if ctx["sentiment"].is_enabled and signal.signal != "NEUTRAL":
         primary = req.team_a_name if trade_on_a else req.team_b_name
@@ -324,6 +320,8 @@ async def get_ledger_balance(session_id: str):
 @app.get("/api/reconciliation/{session_id}")
 async def get_reconciliation(session_id: str):
     ctx = _get_session(session_id)
+    if not _pool:
+        return {"status": "No database connection"}
     async with _pool.acquire() as conn:
         row = await conn.fetchrow(
             "SELECT * FROM reconciliation_log ORDER BY id DESC LIMIT 1"
@@ -337,10 +335,6 @@ async def get_decisions(session_id: str, limit: int = 50):
     return ctx["engine"].recent_decisions(limit)
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# WebSocket — push real-time orderbook & fill events to the dashboard
-# ──────────────────────────────────────────────────────────────────────────────
-
 @app.websocket("/ws/{session_id}")
 async def ws_endpoint(websocket: WebSocket, session_id: str):
     if session_id not in _sessions:
@@ -351,7 +345,6 @@ async def ws_endpoint(websocket: WebSocket, session_id: str):
     ctx = _sessions[session_id]
     ctx["ws_clients"].add(websocket)
 
-    # Attach orderbook update callback
     def push_book_update(ticker: str, book_dict: dict):
         asyncio.create_task(
             _broadcast_to_session(session_id, {"type": "orderbook", "ticker": ticker, "data": book_dict})
@@ -360,7 +353,6 @@ async def ws_endpoint(websocket: WebSocket, session_id: str):
 
     try:
         while True:
-            # Keep connection alive; all pushes are server-initiated
             await asyncio.sleep(30)
             await websocket.send_json({"type": "ping"})
     except WebSocketDisconnect:
