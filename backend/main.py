@@ -216,6 +216,16 @@ async def get_markets(session_id: str, event_ticker: Optional[str] = None, serie
             series_ticker=series_ticker,
             limit=100,
         )
+        # Log field names of first market so we can see the schema
+        markets = data.get("markets", [])
+        if markets:
+            log.info("Kalshi market fields: %s", list(markets[0].keys()))
+            log.info("First market sample: ticker=%s title=%s subtitle=%s yes_bid=%s",
+                markets[0].get("ticker"),
+                markets[0].get("title"),
+                markets[0].get("subtitle"),
+                markets[0].get("yes_bid"),
+            )
         return data
     except Exception as exc:
         log.error("Kalshi get_markets failed: %s", exc)
