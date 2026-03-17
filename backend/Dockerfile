@@ -2,7 +2,6 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install system deps for cryptography
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc libffi-dev libssl-dev curl \
     && rm -rf /var/lib/apt/lists/*
@@ -12,7 +11,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY backend/ .
 
-# Cache bust: 2026-03-17-v5
-EXPOSE 8000
+# Cache bust: 2026-03-17-v6
+EXPOSE 8080
 
-CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1
+ENTRYPOINT ["/bin/sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8080}"]
