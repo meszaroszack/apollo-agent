@@ -41,18 +41,20 @@ export default function DashboardPage() {
   const refreshAll = async () => {
     if (!sessionId) return;
     try {
-      const [s, p, l, r, d] = await Promise.allSettled([
+      const [s, p, l, r, d, m] = await Promise.allSettled([
         getSession(sessionId),
         getPortfolio(sessionId),
         getLedgerBalance(sessionId),
         getReconciliation(sessionId),
         getDecisions(sessionId, 50),
+        getMarkets(sessionId, "kxncaambgame"),
       ]);
       if (s.status === "fulfilled") setSession(s.value);
       if (p.status === "fulfilled") setPortfolio(p.value);
       if (l.status === "fulfilled") setLedger(l.value);
       if (r.status === "fulfilled") setRecon(r.value);
       if (d.status === "fulfilled") setDecisions(d.value);
+      if (m.status === "fulfilled") setMarkets(m.value?.markets || []);
 
       if (s.status === "fulfilled" && s.value.halted) {
         toast.error(`TRADING HALTED: ${s.value.halt_reason}`);
@@ -210,7 +212,30 @@ export default function DashboardPage() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
               <div>
                 <label className="text-xs" style={{ color: "var(--text-secondary)" }}>MARKET TICKER</label>
-                <input style={inputStyle} placeholder="NCAAB-2026-..." value={form.market_ticker} onChange={e => setForm(f => ({ ...f, market_ticker: e.target.value }))} />
+                {markets.length > 0 ? (
+                  <select
+                    style={{ ...inputStyle, cursor: "pointer" }}
+                    value={form.market_ticker}
+                    onChange={e => {
+                      const ticker = e.target.value;
+                      const mkt = markets.find((m: any) => m.ticker === ticker);
+                      setForm(f => ({
+                        ...f,
+                        market_ticker: ticker,
+                        p_market_a: mkt?.yes_bid ? (mkt.yes_bid / 100).toFixed(2) : f.p_market_a,
+                      }));
+                    }}
+                  >
+                    <option value="">— select market —</option>
+                    {markets.map((m: any) => (
+                      <option key={m.ticker} value={m.ticker}>
+                        {m.title || m.ticker}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input style={inputStyle} placeholder="kxncaambgame-26mar17..." value={form.market_ticker} onChange={e => setForm(f => ({ ...f, market_ticker: e.target.value }))} />
+                )}
               </div>
               <div>
                 <label className="text-xs" style={{ color: "var(--text-secondary)" }}>P_MARKET (YES team A)</label>
