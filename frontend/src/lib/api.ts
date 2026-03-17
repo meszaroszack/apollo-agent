@@ -42,8 +42,11 @@ export const getSession = (sid: string) =>
 
 // ── Markets ──────────────────────────────────────────────────────────────────
 
-export const getMarkets = (sid: string, event_ticker?: string) =>
-  request<{ markets: any[] }>(`/api/markets/${sid}${event_ticker ? `?event_ticker=${event_ticker}` : ""}`);
+export const getMarkets = (sid: string, series_ticker?: string, event_ticker?: string) =>
+  request<{ markets: any[] }>(
+    `/api/markets/${sid}` +
+    (series_ticker ? `?series_ticker=${series_ticker}` : event_ticker ? `?event_ticker=${event_ticker}` : "")
+  );
 
 // ── Analysis & Trading ────────────────────────────────────────────────────────
 

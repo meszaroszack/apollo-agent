@@ -65,12 +65,15 @@ class KalshiClient:
     async def get_markets(
         self,
         event_ticker: Optional[str] = None,
+        series_ticker: Optional[str] = None,
         status: str = "open",
         limit: int = 100,
     ) -> dict:
         params = {"status": status, "limit": limit}
         if event_ticker:
             params["event_ticker"] = event_ticker
+        if series_ticker:
+            params["series_ticker"] = series_ticker
         return await self._get(f"{API_PREFIX}/markets", params=params)
 
     async def get_market(self, ticker: str) -> dict:

@@ -47,7 +47,7 @@ export default function DashboardPage() {
         getLedgerBalance(sessionId),
         getReconciliation(sessionId),
         getDecisions(sessionId, 50),
-        getMarkets(sessionId, "kxncaambgame"),
+        getMarkets(sessionId, "kxncaambgame"),  // series_ticker for NCAAB games
       ]);
       if (s.status === "fulfilled") setSession(s.value);
       if (p.status === "fulfilled") setPortfolio(p.value);
@@ -229,7 +229,7 @@ export default function DashboardPage() {
                     <option value="">— select market —</option>
                     {markets.map((m: any) => (
                       <option key={m.ticker} value={m.ticker}>
-                        {m.title || m.ticker}
+                        {m.title || m.subtitle || m.yes_sub_title || m.event_ticker || m.ticker}
                       </option>
                     ))}
                   </select>

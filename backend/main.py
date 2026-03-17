@@ -208,10 +208,14 @@ async def get_session(session_id: str):
 
 
 @app.get("/api/markets/{session_id}")
-async def get_markets(session_id: str, event_ticker: Optional[str] = None):
+async def get_markets(session_id: str, event_ticker: Optional[str] = None, series_ticker: Optional[str] = None):
     ctx = _get_session(session_id)
     try:
-        data = await ctx["kalshi"].get_markets(event_ticker=event_ticker, limit=50)
+        data = await ctx["kalshi"].get_markets(
+            event_ticker=event_ticker,
+            series_ticker=series_ticker,
+            limit=100,
+        )
         return data
     except Exception as exc:
         log.error("Kalshi get_markets failed: %s", exc)
