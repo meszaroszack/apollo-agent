@@ -20,7 +20,7 @@ from .signer import KalshiSigner
 
 log = logging.getLogger("apollo.orderbook")
 
-KALSHI_WS_URL = "wss://trading-api.kalshi.com/trade-api/ws/v2"
+KALSHI_WS_URL = "wss://api.elections.kalshi.com/trade-api/ws/v2"
 RECONNECT_DELAY_SECONDS = 2
 MAX_RECONNECT_ATTEMPTS = 10
 

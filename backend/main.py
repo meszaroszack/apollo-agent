@@ -68,8 +68,10 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 
@@ -208,8 +210,12 @@ async def get_session(session_id: str):
 @app.get("/api/markets/{session_id}")
 async def get_markets(session_id: str, event_ticker: Optional[str] = None):
     ctx = _get_session(session_id)
-    data = await ctx["kalshi"].get_markets(event_ticker=event_ticker, limit=50)
-    return data
+    try:
+        data = await ctx["kalshi"].get_markets(event_ticker=event_ticker, limit=50)
+        return data
+    except Exception as exc:
+        log.error("Kalshi get_markets failed: %s", exc)
+        raise HTTPException(status_code=502, detail=f"Kalshi API error: {exc}")
 
 
 @app.get("/api/orderbook/{session_id}/{ticker}")
@@ -300,9 +306,13 @@ async def execute_trade(req: TradeRequest):
 @app.get("/api/portfolio/{session_id}")
 async def get_portfolio(session_id: str):
     ctx = _get_session(session_id)
-    balance = await ctx["kalshi"].get_balance()
-    positions = await ctx["kalshi"].get_positions()
-    return {"balance": balance, "positions": positions}
+    try:
+        balance = await ctx["kalshi"].get_balance()
+        positions = await ctx["kalshi"].get_positions()
+        return {"balance": balance, "positions": positions}
+    except Exception as exc:
+        log.error("Kalshi get_portfolio failed: %s", exc)
+        raise HTTPException(status_code=502, detail=f"Kalshi API error: {exc}")
 
 
 @app.get("/api/ledger/balance/{session_id}")

@@ -12,7 +12,7 @@ from .signer import KalshiSigner
 
 log = logging.getLogger("apollo.kalshi_client")
 
-KALSHI_BASE = "https://trading-api.kalshi.com"
+KALSHI_BASE = "https://api.elections.kalshi.com"
 API_PREFIX = "/trade-api/v2"
 
 

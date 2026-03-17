@@ -28,7 +28,7 @@ class KalshiSigner:
     headers = signer.build_auth_headers("GET", "/trade-api/v2/portfolio/balance")
     """
 
-    SALT_LENGTH = 32  # bytes — matches Kalshi's expected salt
+    SALT_LENGTH = padding.PSS.DIGEST_LENGTH  # Kalshi spec: PSS.DIGEST_LENGTH
 
     def __init__(self, key_id: str, private_key_pem: str):
         """
