@@ -1,0 +1,31 @@
+# Keys — NEVER commit
+*.key
+*.pem
+*.p12
+.env
+.env.local
+.env.production
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.venv/
+dist/
+*.egg-info/
+
+# Node
+node_modules/
+.next/
+.turbo/
+out/
+
+# Audit exports
+Audit_Failure*.csv
+
+# Docker
+*.log
+
+# OS
+.DS_Store

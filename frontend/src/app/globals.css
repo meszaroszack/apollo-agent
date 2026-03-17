@@ -1,0 +1,75 @@
+@import "tailwindcss";
+
+:root {
+  /* Bloomberg-dark color system */
+  --bg-base: #0a0a0b;
+  --bg-panel: #111113;
+  --bg-card: #161618;
+  --bg-elevated: #1c1c1f;
+  --border: #2a2a2e;
+  --border-subtle: #1f1f23;
+
+  /* Terminal green accent — Bloomberg aesthetic */
+  --accent-green: #00d084;
+  --accent-green-dim: #00a366;
+  --accent-amber: #f59e0b;
+  --accent-red: #ef4444;
+  --accent-blue: #3b82f6;
+  --accent-purple: #a855f7;
+
+  /* Text */
+  --text-primary: #e8e8ea;
+  --text-secondary: #8b8b94;
+  --text-muted: #52525a;
+  --text-inverse: #0a0a0b;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-family: 'SF Mono', 'JetBrains Mono', 'Consolas', 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  height: 100%;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-base); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* Utility classes */
+.font-mono { font-family: 'SF Mono', 'JetBrains Mono', monospace; }
+.text-green { color: var(--accent-green); }
+.text-red { color: var(--accent-red); }
+.text-amber { color: var(--accent-amber); }
+.text-muted { color: var(--text-muted); }
+.text-secondary { color: var(--text-secondary); }
+
+/* Flashing pulse for live data */
+@keyframes pulse-green {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.live-pulse { animation: pulse-green 2s infinite; }
+
+/* Panel borders */
+.panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.panel-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+}
