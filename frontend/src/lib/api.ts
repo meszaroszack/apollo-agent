@@ -18,7 +18,7 @@ export interface SessionCreatePayload {
   kalshi_key_id: string;
   kalshi_private_key: string;
   perplexity_api_key?: string;
-  balldontlie_api_key: string;
+  balldontlie_api_key?: string;
   bankroll_usd: number;
   dry_run: boolean;
 }
