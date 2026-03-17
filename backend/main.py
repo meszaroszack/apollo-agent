@@ -79,7 +79,7 @@ class SessionCreate(BaseModel):
     kalshi_key_id: str
     kalshi_private_key: str
     perplexity_api_key: Optional[str] = None
-    balldontlie_api_key: str
+    balldontlie_api_key: Optional[str] = None
     bankroll_usd: float = Field(1000.0, ge=10.0)
     dry_run: bool = True
 
@@ -121,7 +121,7 @@ async def _build_session(req: SessionCreate, session_id: str) -> dict:
 
     signer = KalshiSigner(req.kalshi_key_id, req.kalshi_private_key)
     kalshi = KalshiClient(signer)
-    bdl = BallDontLieClient(req.balldontlie_api_key)
+    bdl = BallDontLieClient(req.balldontlie_api_key) if req.balldontlie_api_key else None
     alpha = AlphaEngine(bdl, season=2026)
     sentiment = SentimentGuardrail(req.perplexity_api_key)
     sizer = KellySizer(req.bankroll_usd)

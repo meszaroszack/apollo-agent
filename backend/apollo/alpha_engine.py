@@ -231,8 +231,8 @@ class AlphaEngine:
     season : int  Current NCAAB season year (e.g. 2026)
     """
 
-    def __init__(self, bdl_client: BallDontLieClient, season: int = 2026):
-        self._bdl = bdl_client
+    def __init__(self, bdl_client, season: int = 2026):
+        self._bdl = bdl_client  # Optional — None if no BallDontLie key provided
         self._season = season
         self._calc = FourFactorsCalculator()
 
@@ -247,7 +247,11 @@ class AlphaEngine:
         """
         Full pipeline: fetch stats → compute P_true → generate signal.
         """
-        # Fetch season averages in parallel
+        # Fetch season averages in parallel (requires BallDontLie key)
+        if self._bdl is None:
+            log.info("No BallDontLie client — returning neutral signal for %s vs %s", team_a_name, team_b_name)
+            return self._neutral_signal(team_a_id, team_a_name, team_b_id, team_b_name, p_market_a)
+
         avg_a, avg_b = await asyncio.gather(
             self._bdl.get_team_season_averages(team_a_id, self._season),
             self._bdl.get_team_season_averages(team_b_id, self._season),

@@ -36,8 +36,8 @@ export default function OnboardingPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.kalshi_key_id || !form.kalshi_private_key || !form.balldontlie_api_key) {
-      toast.error("Kalshi Key ID, Private Key, and BALLDONTLIE key are required");
+    if (!form.kalshi_key_id || !form.kalshi_private_key) {
+      toast.error("Kalshi Key ID and Private Key are required");
       return;
     }
 
@@ -46,7 +46,7 @@ export default function OnboardingPage() {
       const payload: SessionCreatePayload = {
         kalshi_key_id: form.kalshi_key_id.trim(),
         kalshi_private_key: form.kalshi_private_key.trim(),
-        balldontlie_api_key: form.balldontlie_api_key.trim(),
+        balldontlie_api_key: form.balldontlie_api_key ? form.balldontlie_api_key.trim() : undefined,
         bankroll_usd: Number(form.bankroll_usd),
         dry_run: form.dry_run,
         perplexity_api_key: form.enablePerplexity ? form.perplexity_api_key : undefined,
@@ -171,7 +171,7 @@ export default function OnboardingPage() {
                   BALLDONTLIE
                 </span>
                 <div style={{ background: "var(--border)", height: "1px", flex: 1 }} />
-                <span className="text-xs" style={{ color: "var(--text-muted)" }}>GOAT tier required</span>
+                <span className="text-xs" style={{ color: "var(--text-muted)" }}>OPTIONAL — enhances rebound signal</span>
               </div>
               <input
                 type="text"
