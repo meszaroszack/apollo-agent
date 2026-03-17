@@ -4,7 +4,7 @@ FROM node:20-alpine AS base
 FROM base AS deps
 WORKDIR /app
 COPY frontend/package.json ./
-RUN npm install --frozen-lockfile
+RUN npm install
 
 # ── Build ─────────────────────────────────────────────────────────────
 FROM base AS builder
