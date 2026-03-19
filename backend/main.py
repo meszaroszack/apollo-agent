@@ -141,7 +141,7 @@ async def _build_session(req: SessionCreate, session_id: str) -> dict:
             _sessions[session_id]["halted"] = True
             _sessions[session_id]["halt_reason"] = reason
 
-    recon = ReconciliationManager(ledger, signer, _pool, halt_callback)
+    recon = ReconciliationManager(ledger, signer, _pool, halt_callback, kalshi_client=kalshi)
     recon.start()
 
     engine = TradeEngine(alpha, sentiment, sizer, kalshi, ledger, recon, req.dry_run)

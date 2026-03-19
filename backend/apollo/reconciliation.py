@@ -23,7 +23,6 @@ from enum import Enum
 from typing import Optional
 
 import asyncpg
-import httpx
 
 from .signer import KalshiSigner
 
@@ -32,7 +31,6 @@ log = logging.getLogger("apollo.reconciliation")
 # Halt threshold: 0.1% discrepancy
 HALT_THRESHOLD_PCT = Decimal("0.001")
 RECONCILE_INTERVAL_SECONDS = 60
-KALSHI_BASE_URL = "https://trading-api.kalshi.com"
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -286,11 +284,13 @@ class ReconciliationManager:
         signer: KalshiSigner,
         pool: asyncpg.Pool,
         halt_callback=None,
+        kalshi_client=None,
     ):
         self._ledger = ledger
         self._signer = signer
         self._pool = pool
         self._halt_callback = halt_callback  # async callable(reason: str)
+        self._kalshi = kalshi_client
         self.trading_halted: bool = False
         self.status: ReconciliationStatus = ReconciliationStatus.PENDING
         self._task: Optional[asyncio.Task] = None
@@ -337,17 +337,17 @@ class ReconciliationManager:
             )
 
     async def _fetch_kalshi_balance_cents(self) -> int:
-        path = "/trade-api/v2/portfolio/balance"
-        headers = self._signer.build_auth_headers("GET", path)
-        async with httpx.AsyncClient(base_url=KALSHI_BASE_URL, timeout=10) as client:
-            resp = await client.get(path, headers=headers)
-            resp.raise_for_status()
-            data = resp.json()
-            # Kalshi returns: { "balance": { "balance": <cents>, "payout": ... } }
-            balance_obj = data.get("balance", {})
-            if isinstance(balance_obj, dict):
-                return int(balance_obj.get("balance", 0))
-            return int(balance_obj or 0)
+        if self._kalshi is None:
+            return 0
+        data = await self._kalshi.get_balance()
+        # Kalshi returns: { "balance": <cents>, "payout": ... }
+        # get_balance() returns the full response — handle both flat and nested
+        if isinstance(data, dict):
+            bal = data.get("balance", 0)
+            if isinstance(bal, dict):
+                return int(bal.get("balance", 0))
+            return int(bal or 0)
+        return 0
 
     async def _halt_and_export(
         self,
