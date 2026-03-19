@@ -343,8 +343,11 @@ class ReconciliationManager:
             resp = await client.get(path, headers=headers)
             resp.raise_for_status()
             data = resp.json()
-            # Kalshi returns balance in cents
-            return int(data.get("balance", 0))
+            # Kalshi returns: { "balance": { "balance": <cents>, "payout": ... } }
+            balance_obj = data.get("balance", {})
+            if isinstance(balance_obj, dict):
+                return int(balance_obj.get("balance", 0))
+            return int(balance_obj or 0)
 
     async def _halt_and_export(
         self,
