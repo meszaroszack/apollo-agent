@@ -7,7 +7,7 @@ import { useApolloStore } from "@/lib/store";
 import {
   getSession, getPortfolio, getLedgerBalance,
   getReconciliation, getDecisions, analyzeMatchup, executeTrade,
-  getMarkets, AnalyzePayload, SessionExpiredError
+  getMarkets, AnalyzePayload, SessionExpiredError, deleteSession
 } from "@/lib/api";
 import PnLChart from "@/components/charts/PnLChart";
 import DivergenceChart from "@/components/charts/DivergenceChart";
@@ -178,7 +178,19 @@ export default function DashboardPage() {
         </div>
 
         <button
-          onClick={() => { useApolloStore.getState().clearSession(); router.replace("/onboarding"); }}
+          onClick={async () => {
+            const sid = sessionId;
+            try {
+              if (sid) {
+                await deleteSession(sid);
+              }
+            } catch {
+              // If the backend is already restarted or the session is gone,
+              // we still want to clear local session state and redirect.
+            }
+            useApolloStore.getState().clearSession();
+            router.replace("/onboarding");
+          }}
           style={{
             fontSize: "11px", color: "var(--text-muted)", background: "none",
             border: "1px solid var(--border)", padding: "4px 10px", borderRadius: "3px",

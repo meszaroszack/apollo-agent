@@ -56,6 +56,9 @@ export const getSession = (sid: string) =>
     recon_status: string;
   }>(`/api/session/${sid}`);
 
+export const deleteSession = (sid: string) =>
+  request<{ status: string; session_id: string }>(`/api/session/${sid}`, { method: "DELETE" });
+
 // ── Markets ──────────────────────────────────────────────────────────────────
 
 export const getMarkets = (sid: string, series_ticker?: string, event_ticker?: string) =>

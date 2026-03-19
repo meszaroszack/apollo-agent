@@ -212,6 +212,22 @@ async def get_session(session_id: str):
     }
 
 
+@app.delete("/api/session/{session_id}")
+async def delete_session(session_id: str):
+    ctx = _sessions.pop(session_id, None)
+    if not ctx:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    # Stop background tasks
+    ctx["recon"].stop()
+    await ctx["ob_manager"].stop()
+    await ctx["kalshi"].close()
+    if ctx.get("bdl"):
+        await ctx["bdl"].close()
+
+    return {"status": "closed", "session_id": session_id}
+
+
 @app.get("/api/markets/{session_id}")
 async def get_markets(session_id: str, event_ticker: Optional[str] = None, series_ticker: Optional[str] = None):
     ctx = _get_session(session_id)
