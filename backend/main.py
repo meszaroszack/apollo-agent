@@ -135,6 +135,19 @@ async def _build_session(req: SessionCreate, session_id: str) -> dict:
     ledger = LedgerEngine(_pool)
     await ledger.initialize()
 
+    # Seed ledger with current Kalshi balance so reconciliation starts clean
+    try:
+        bal_data = await kalshi.get_balance()
+        opening_cents = bal_data.get("balance", 0)
+        if isinstance(opening_cents, dict):
+            opening_cents = opening_cents.get("balance", 0)
+        if opening_cents > 0:
+            seed_id = await ledger.seed_opening_balance(int(opening_cents))
+            if seed_id:
+                log.info("Seeded ledger with opening balance: %d cents", opening_cents)
+    except Exception as exc:
+        log.warning("Could not seed opening balance (non-fatal): %s", exc)
+
     async def halt_callback(reason: str):
         log.critical("HALT for session %s: %s", session_id, reason)
         if session_id in _sessions:

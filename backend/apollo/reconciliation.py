@@ -138,6 +138,37 @@ class LedgerEngine:
                 END$$;
             """)
 
+    async def seed_opening_balance(self, balance_cents: int) -> Optional[str]:
+        """
+        Record the opening Kalshi balance so the ledger starts in sync.
+        Only inserts if no journal entries exist yet (idempotent).
+        """
+        async with self._pool.acquire() as conn:
+            count = await conn.fetchval("SELECT COUNT(*) FROM journal_entries")
+            if count > 0:
+                return None  # Already seeded
+            async with conn.transaction():
+                entry_id = await conn.fetchval(
+                    """
+                    INSERT INTO journal_entries (description, fill_id)
+                    VALUES ($1, $2)
+                    RETURNING entry_id::text
+                    """,
+                    "Opening balance seed",
+                    "SEED",
+                )
+                await conn.executemany(
+                    """
+                    INSERT INTO journal_lines (entry_id, account_name, debit_cents, credit_cents)
+                    VALUES ($1, $2, $3, $4)
+                    """,
+                    [
+                        (entry_id, AccountType.ASSETS_CASH, balance_cents, 0),
+                        (entry_id, AccountType.EQUITY_PNL, 0, balance_cents),
+                    ],
+                )
+            return entry_id
+
     async def record_fill(
         self,
         fill_id: str,
