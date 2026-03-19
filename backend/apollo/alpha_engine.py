@@ -41,7 +41,7 @@ class TeamFactors:
     team_name: str
     efg_pct: float       # Effective FG% = (FGM + 0.5*3PM) / FGA
     to_rate: float       # Turnover rate = TOV / (FGA + 0.44*FTA + TOV)
-    reb_rate: float      # Rebounding rate = OREB / (OREB + Opp_DREB)
+    reb_rate: float      # Offensive rebounding rate proxy = OREB / (OREB + DREB)
     ftr: float           # Free throw rate = FTA / FGA
     avg_rebounds: float  # Simple avg rebounds per game (for rebound alpha)
     sample_games: int    # Games used in the calculation
@@ -180,7 +180,10 @@ class FourFactorsCalculator:
         # Four Factors
         efg = (fgm + 0.5 * fg3m) / fga if fga > 0 else 0
         to_rate = tov / (fga + 0.44 * fta + tov) if (fga + 0.44 * fta + tov) > 0 else 0
-        reb_rate = oreb / (oreb + 1) if (oreb + 1) > 0 else 0  # simplified without opp data
+        # OREB / (OREB + DREB): proxy offensive rebounding percentage using only
+        # the single-team endpoint (opponent DREB isn't available here).
+        total_reb = oreb + dreb if (oreb + dreb) > 0 else 1
+        reb_rate = oreb / total_reb
         ftr = fta / fga if fga > 0 else 0
 
         return TeamFactors(
