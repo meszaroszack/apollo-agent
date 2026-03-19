@@ -152,11 +152,12 @@ class TradeEngine:
         executed = False
 
         if self._dry_run:
+            price_cents = max(1, int(p_market * 100))
             log.info(
                 "[DRY RUN] Would %s %s on %s — %d contracts @ ~%d¢",
                 side, market_ticker, primary_team,
-                sizing.position_cents // 100,
-                int(p_market * 100),
+                sizing.position_cents // price_cents,
+                price_cents,
             )
             executed = True
             order_id = f"DRYRUN-{uuid.uuid4().hex[:8].upper()}"
@@ -164,8 +165,8 @@ class TradeEngine:
             try:
                 # Convert dollar size → number of contracts
                 # Each Kalshi contract trades at yes_price cents (max $1)
-                price_cents = int(p_market * 100)
-                n_contracts = max(1, sizing.position_cents // 100)
+                price_cents = max(1, int(p_market * 100))  # price per contract in cents
+                n_contracts = max(1, sizing.position_cents // price_cents)
                 kalshi_side = "no" if side == "NO" else "yes"
                 kalshi_action = "buy"
 
