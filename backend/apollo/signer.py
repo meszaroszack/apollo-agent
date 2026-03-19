@@ -114,21 +114,5 @@ class KalshiSigner:
         )
         return base64.b64encode(signature_bytes).decode("utf-8")
 
-    # ------------------------------------------------------------------
-    # Convenience: sign a websocket upgrade (no body signing needed)
-    # ------------------------------------------------------------------
-
-    def websocket_auth_params(self, path: str = "/trade-api/ws/v2") -> dict[str, str]:
-        """
-        Return query-string-style params for WebSocket upgrade authentication.
-        Some Kalshi WS endpoints accept these as query params instead of headers.
-        """
-        ts = int(time.time() * 1000)
-        clean_path = self._strip_query(path)
-        message = self._build_message(ts, "GET", clean_path)
-        sig = self._sign(message)
-        return {
-            "kalshi-access-key": self.key_id,
-            "kalshi-access-signature": sig,
-            "kalshi-access-timestamp": str(ts),
-        }
+    # WebSocket auth is performed by sending the same signed headers used for
+    # HTTP requests during the upgrade handshake (see OrderbookManager).

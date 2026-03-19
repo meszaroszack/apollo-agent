@@ -11,7 +11,6 @@ import logging
 import time
 from collections import defaultdict
 from typing import Callable, Optional
-from urllib.parse import urlencode
 
 import websockets
 from websockets.exceptions import ConnectionClosed
@@ -183,10 +182,13 @@ class OrderbookManager:
             log.critical("Max WebSocket reconnect attempts reached — orderbook stream DEAD")
 
     async def _connect_and_stream(self) -> None:
-        auth_params = self._signer.websocket_auth_params()
-        ws_url = f"{KALSHI_WS_URL}?{urlencode(auth_params)}"
-
-        async with websockets.connect(ws_url, ping_interval=20, ping_timeout=10) as ws:
+        auth_headers = self._signer.build_auth_headers("GET", "/trade-api/ws/v2")
+        async with websockets.connect(
+            KALSHI_WS_URL,
+            additional_headers=auth_headers,
+            ping_interval=20,
+            ping_timeout=10,
+        ) as ws:
             log.info("WebSocket connected to Kalshi")
             await self._subscribe(ws)
 
