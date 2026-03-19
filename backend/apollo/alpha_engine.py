@@ -26,7 +26,10 @@ import httpx
 
 log = logging.getLogger("apollo.alpha_engine")
 
-BALLDONTLIE_BASE = "https://api.balldontlie.io/v1"
+# BALLDONTLIE separates NBA vs NCAAB under different base URLs.
+# The Four Factors model requires NCAAB stats (college), not NBA.
+BALLDONTLIE_NCAAB_BASE = "https://api.balldontlie.io/ncaab/v1"
+BALLDONTLIE_BASE = BALLDONTLIE_NCAAB_BASE  # Backward-compat alias
 REBOUND_WIN_PROB_PER_GAME = 0.0262   # +1 reb/game = +2.62% win prob (research finding)
 HYPE_THRESHOLD = 0.05                 # P_market - P_true > 5% → NO-side signal
 
@@ -75,7 +78,7 @@ class BallDontLieClient:
     def __init__(self, api_key: str):
         self._api_key = api_key
         self._client = httpx.AsyncClient(
-            base_url=BALLDONTLIE_BASE,
+            base_url=BALLDONTLIE_NCAAB_BASE,
             headers={"Authorization": api_key},
             timeout=30,
         )
