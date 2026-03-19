@@ -21,7 +21,6 @@ log = logging.getLogger("apollo.orderbook")
 
 KALSHI_WS_URL = "wss://api.elections.kalshi.com/trade-api/ws/v2"
 RECONNECT_DELAY_SECONDS = 2
-MAX_RECONNECT_ATTEMPTS = 10
 
 
 class OrderbookLevel:
@@ -165,21 +164,19 @@ class OrderbookManager:
     # ------------------------------------------------------------------
 
     async def _connect_loop(self) -> None:
-        while self._running and self._reconnect_count < MAX_RECONNECT_ATTEMPTS:
+        while self._running:
             try:
                 await self._connect_and_stream()
-                self._reconnect_count = 0  # reset on clean disconnect
+                self._reconnect_count = 0
             except ConnectionClosed as e:
                 log.warning("WebSocket closed: %s — reconnecting in %ds", e, RECONNECT_DELAY_SECONDS)
             except Exception as e:
                 log.error("WebSocket error: %s — reconnecting in %ds", e, RECONNECT_DELAY_SECONDS)
 
             if self._running:
+                delay = min(RECONNECT_DELAY_SECONDS * (self._reconnect_count + 1), 30)
                 self._reconnect_count += 1
-                await asyncio.sleep(RECONNECT_DELAY_SECONDS * self._reconnect_count)
-
-        if self._reconnect_count >= MAX_RECONNECT_ATTEMPTS:
-            log.critical("Max WebSocket reconnect attempts reached — orderbook stream DEAD")
+                await asyncio.sleep(delay)
 
     async def _connect_and_stream(self) -> None:
         auth_headers = self._signer.build_auth_headers("GET", "/trade-api/ws/v2")
