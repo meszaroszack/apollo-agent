@@ -391,7 +391,9 @@ async def ws_endpoint(websocket: WebSocket, session_id: str):
         asyncio.create_task(
             _broadcast_to_session(session_id, {"type": "orderbook", "ticker": ticker, "data": book_dict})
         )
-    ctx["ob_manager"]._on_update = push_book_update
+    # Only set once per session; _broadcast_to_session fans out to all ws_clients.
+    if ctx["ob_manager"]._on_update is None:
+        ctx["ob_manager"]._on_update = push_book_update
 
     try:
         while True:
