@@ -277,7 +277,7 @@ class LedgerEngine:
             row = await conn.fetchrow(
                 """
                 SELECT
-                    COALESCE(SUM(credit_cents), 0) - COALESCE(SUM(debit_cents), 0) AS balance
+                    COALESCE(SUM(debit_cents), 0) - COALESCE(SUM(credit_cents), 0) AS balance
                 FROM journal_lines
                 WHERE account_name = $1
                 """,
